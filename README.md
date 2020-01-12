@@ -17,7 +17,7 @@ In this image movie names showed as string for clarity. In real data structure, 
 
 ![The data structure that I used](Images/veri_yapısı.png)
 
-###### Example output for program
+##### Example output for program
 This output shows connection between Kevin Bacon and Qi Shu. Bacon number is 3.
 
 ![Example output for program](Images/çıktı.png)
