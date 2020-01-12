@@ -9,7 +9,7 @@ This is my project for Algorithm Analysis class. The aim of this project is find
 
 ![Example connections between artists](Images/artists.png)
 
-![The data structure that I used](Images/veri yapısı.png)
+![The data structure that I used](Images/veri_yapısı.png)
 In this image movie names showed as string for clarity. In real data structure, array consists of artists and movies names. Their address of in array is their generated hash number with Double Hashing Method. Connections of movies or artists kept in linked list. Connected elements specified with their integer hash numbers not with their names.
 
 ![Example output for program](Images/çıktı.png)
