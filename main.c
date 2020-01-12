@@ -32,10 +32,10 @@ void initializeHash( ht* hashTable, unsigned long long int M) {
 }
 
 void initiliazeQueue(QUEUE *q, unsigned long long int M) {
-    q->rear = 0;
-    q->front = 0;
 	q->queue = (int*) calloc(M, sizeof(int));
 	q->parent = (int*) calloc(M, sizeof(int));
+	q->rear = 0;
+    q->front = 0;
 }
 
 void enqueue(QUEUE *q, int x) {
@@ -62,7 +62,7 @@ int double_hashing (unsigned long long int key, int i, unsigned long long int M)
 	return (h1 + i * h2) % M;
 }
 
-unsigned long long int find_key(char *str) {
+unsigned long long int find_key (char *str) {
 	int i = 0;
 	unsigned long long int key = 0;
 	int N = strlen(str);
@@ -74,7 +74,7 @@ unsigned long long int find_key(char *str) {
 	return key;
 }
 
-int insert_to_table (unsigned long long int key, char* token, ht* hashTable, unsigned long long int M) {
+int insert_to_table (unsigned long long int key, char* token, ht* hashTable, unsigned long long int M, int* count) {
 	int adr, i = 0;
 	int same = 0;
 	adr = double_hashing(key, i, M);
@@ -91,9 +91,9 @@ int insert_to_table (unsigned long long int key, char* token, ht* hashTable, uns
 		return adr;
 	}
 	else if (hashTable[adr].name[0] == '\0') {
+		*count = *count + 1;
 		strcpy(hashTable[adr].name, token);
 		hashTable[adr].head = NULL;
-		//printf("%s inserted to %d.. \n", hashTable[adr].name, adr);
 		return adr;
 	} 
 	else if (hashTable[adr].name[0] != '\0') {
@@ -118,7 +118,7 @@ void insert_node (ht* hashTable, int adr1, int adr2) {
 	}
 }
 
-void tokenizer(char* line, ht* hashTable, unsigned long long int M) {
+void tokenizer(char* line, ht* hashTable, unsigned long long int M, int* movie_count, int* artist_count) {
 	char *token, buffer1[200], buffer2[200];
 	int i, j, artist_adr = 0, movie_adr = 0;
 	unsigned long long int key = 0;
@@ -133,8 +133,7 @@ void tokenizer(char* line, ht* hashTable, unsigned long long int M) {
 		} 
 		if (i < strlen(token)) {
 			key = find_key(token);
-			//printf("%s key: %llu \n", token, key); //film
-			movie_adr = insert_to_table(key, token, hashTable, M);
+			movie_adr = insert_to_table(key, token, hashTable, M, movie_count);
 		}
 		else {
 			i = 0;
@@ -153,28 +152,12 @@ void tokenizer(char* line, ht* hashTable, unsigned long long int M) {
 			strcat(buffer2, " ");
 			strcat(buffer2, buffer1);
 			key = find_key(buffer2);
-			//printf("%s key: %llu \n", buffer2, key); //oyuncu
-			artist_adr = insert_to_table(key, buffer2, hashTable, M);
+			artist_adr = insert_to_table(key, buffer2, hashTable, M, artist_count);
 			if (artist_adr != -1) {
 				insert_node(hashTable, movie_adr, artist_adr);
 				insert_node(hashTable, artist_adr, movie_adr);
 			}
 		}
-	}
-}
-
-void file_reader(ht* hashTable, unsigned long long int M) 
-{
-	FILE *fp;
-	char line[SIZE];
-	
-	fp = fopen("D://input-mpaa.txt", "r");
-	if (fp == NULL) {
-		printf("File could not opened !!\n");
-		return;
-	}
-	while ( fgets(line, SIZE - 1, fp) ) {
-		tokenizer(line, hashTable, M);
 	}
 }
 
@@ -192,15 +175,19 @@ int search (char* artist, ht* hashTable, unsigned long long int M) {
 	}
 }
 
-void bfs (QUEUE *q, int start, int wanted, ht* hashTable, int *visited, unsigned long long int M) {
+void bfs (QUEUE *q, int start, int wanted, ht* hashTable, unsigned long long int M, int select) {
     int i = 0, flag = 0, j = 0, count = 0, v = start;
 	node* current;
     int *yol = (int*) calloc(M, sizeof(int));
+	int* visited = (int*) calloc(M, sizeof(int));
 	
-	q->parent[i] = -1;
+	q->front = 0; //initialize attributes
+	q->rear = 0;
+	
+	q->parent[v] = -1;
     visited[v] = 1;
 	enqueue(q, v);
-    while ((q->front < q->rear) && (!flag)) {
+    while ((!flag) && (q->front < q->rear)) {
         v = dequeue(q);
         if (hashTable[v].head) {
 			current = hashTable[v].head;
@@ -209,15 +196,15 @@ void bfs (QUEUE *q, int start, int wanted, ht* hashTable, int *visited, unsigned
 					q->parent[current->adr] = v;
 					visited[current->adr] = 1;
 					enqueue(q, current->adr);
-					if (current->adr == wanted)
+					if (current->adr == wanted) {
 						flag = 1;
+					}
 				}
 				current = current->next;
 			}
         }
     }
 	if (flag == 1) {
-		printf("Yol var. \n");
 		i = wanted;
 		j = 0;
 		while (i != start) {
@@ -232,20 +219,28 @@ void bfs (QUEUE *q, int start, int wanted, ht* hashTable, int *visited, unsigned
 			printf("%s '", hashTable[yol[j++]].name);
 			printf("%s'\n", hashTable[yol[j--]].name);
 			count++;
-		} printf("Kevin Bacon Sayisi: %d \n", count);
+		} 
+		if (!select) {
+			if (count > 6) 
+				printf("\nKevin Bacon Sayisi %d oldugundan Kevin Bacon ile baglanti yoktur. \n", count);
+			else
+				printf("\n%s Kevin Bacon Sayisi: %d\n", hashTable[wanted].name, count);
+		}
+		else if (select)
+			printf("\n%s - %s: %d\n", hashTable[start].name, hashTable[wanted].name, count);
 	}
 }
 
-void kevin_bacon (char* artist1, char* artist2, ht* hashTable, QUEUE *q, int* visited, unsigned long long int M) {
+void kevin_bacon (char* artist1, char* artist2, ht* hashTable, QUEUE *q, unsigned long long int M, int select) {
 	int adr1, adr2;
 	
 	adr1 = search(artist1, hashTable, M);
 	adr2 = search(artist2, hashTable, M);
 	if ((adr1 == -1) || (adr2 == -1))
 		return;
-	printf("%s %d nolu adreste.\n", artist1, adr1);
+	printf("\n%s %d nolu adreste.\n", artist1, adr1);
 	printf("%s %d nolu adreste.\n", artist2, adr2);
-	bfs(q, adr1, adr2, hashTable, visited, M);
+	bfs(q, adr1, adr2, hashTable, M, select);
 }
 
 void print_hash (ht* hashTable, long long int M) {
@@ -270,71 +265,134 @@ void print_hash (ht* hashTable, long long int M) {
 	}
 	printf("%d elements inserted to hash table. \n", count);
 }
+void print_connections (ht* hashTable, char* element, long long int M) {
+	int i;
+	node* current;
+	i = search(element, hashTable, M);
+	if (i == -1 )
+		return;
+	if (hashTable[i].name[0] != '\0') {
+		printf("%s: ", hashTable[i].name);
+		current = hashTable[i].head;
+		if (hashTable[i].head != NULL) {
+			printf("%s", hashTable[current->adr].name);
+			current = current->next;
+			while (current) {
+				printf(", ");
+				printf("%s", hashTable[current->adr].name);
+				current = current->next;
+			} printf("\n");
+		}
+	}
+	
+}
+
+void file_reader(ht* hashTable, unsigned long long int M) 
+{
+	FILE *fp;
+	char line[SIZE];
+	int movie_count = 0, artist_count = 0;
+	
+	fp = fopen("input-mpaa.txt", "r");
+	if (fp == NULL) {
+		printf("File could not opened !!\n");
+		return;
+	}
+	while ( fgets(line, SIZE - 1, fp) ) {
+		tokenizer(line, hashTable, M, &movie_count, &artist_count);
+	}
+	printf("\n%d film, %d artist ve tum baglantilari yerlestirildi. \n", movie_count, artist_count);
+	printf("Toplam unique eleman sayisi: %d \n", movie_count + artist_count);
+}
 
 int main(int argc, char **argv)
 {
+	char artist1[100], artist2[100];
 	unsigned long long int M = 323567;
-	char artist1[100] = "Leonardo DiCaprio", artist2[100] = "Kevin Spacey";
 	ht* hashTable = (ht*) calloc(M, sizeof(ht));
-	int* visited;
+	
 	QUEUE q;
-	
-	visited = (int*) calloc(M, sizeof(int));
-	
+
 	initializeHash(hashTable, M);
 	initiliazeQueue(&q, M);
-	
-	/*file_reader(hashTable, M);
-	printf("Elemanlar yerlestirildi. \n");
-
-	kevin_bacon(artist1, artist2, hashTable, &q, visited, M);*/
 	
 	int fonk, out; 
 	do {
 		out = 1;
 		system("cls");
 		printf("_________KEVIN BACON SAYISINI BULMA__________ \n");
-		printf("0 - Hash Tablosunu Olusturma \n");
-		printf("1 - Artistler Arasinda Kevin Bacon Sayisini Bulma \n");
-		printf("2 - Hash Tablosunu Goruntule \n");
-		printf("3 - EXIT \n");
+		printf("0 - GRAF YAPISINI OLUSTURMA \n");
+		printf("1 - BIR ARTISTIN KEVIN BACON SAYISINI BULMA  \n");
+		printf("2 - IKI ARTIST ARASINDAKI UZAKLIGI BULMA \n");
+		printf("3 - BIR ARTIST YA DA FILMIN BAGLANTILARINI GOSTER \n");
+		printf("4 - GRAF YAPISINI GORUNTULE \n");
+		printf("5 - EXIT \n");
 		printf("Islem yapmak istediginiz fonksiyonu seciniz : ");
 		scanf("%d", &fonk);
 		switch(fonk) {
 			case 0:
+				system("cls");
 				do {
-					printf("_________________________________\n");
-					printf("0 - Hash Tablosunu Olusturma \n");
+					printf("____________________GRAF YAPISINI OLUSTURMA____________________\n");
 					file_reader(hashTable, M);
-					printf("Elemanlar yerlestirildi. \n");
 					printf("\nPress 0 to return the menu: ");
 					scanf("%d", &out);
 				} while(out != 0);
 				break;
 			case 1: 
+				system("cls");
 				do {
-					printf("_________________________________\n");
-					printf("1 - Artistler Arasinda Kevin Bacon Sayisini Bulma \n");
-					printf("Birinci artistin adini giriniz: ");
-					scanf(" %[^\n]s", artist1);
-					printf("Ikinci artistin adini giriniz: ");
+					printf("____________________KEVIN BACON SAYISINI BULMA____________________ \n");
+					strcpy(artist1, "Kevin Bacon");
+					printf("**UYARI** : Artist adi Firstname Lastname sirasi ile girilecektir! \n");
+					printf("            Ornek input: Kevin Bacon\n");
+					printf("\nKevin Bacon'a uzakligi bulunacak artistin adini giriniz: ");
 					scanf(" %[^\n]s", artist2);
-					kevin_bacon(artist1, artist2, hashTable, &q, visited, M);
+					kevin_bacon(artist1, artist2, hashTable, &q, M, 0);
 					printf("\nPress 0 to return the menu: ");
 					scanf("%d", &out);
 				} while(out != 0);
 				break;
 			case 2: 
-			do {
-				printf("_________________________________\n");
-				printf("2 - Hash Tablosunu Goruntule \n");
-				print_hash(hashTable, M);
-				
-				printf("\nPress 0 to return the menu: ");
-				scanf("%d", &out);
-			} while(out != 0);
-			break;
+				system("cls");
+				do {
+					printf("____________________IKI ARTIST ARASINDAKI UZAKLIGI BULMA____________________\n");
+					printf("**UYARI** : Artist adi Firstname Lastname sirasi ile girilecektir... \n");
+					printf("            Ornek input: Kevin Bacon\n");
+					printf("\nBirinci artistin adini giriniz: ");
+					scanf(" %[^\n]s", artist1);
+					printf("Ikinci artistin adini giriniz: ");
+					scanf(" %[^\n]s", artist2);
+					kevin_bacon(artist1, artist2, hashTable, &q, M, 1);
+					printf("\nPress 0 to return the menu: ");
+					scanf("%d", &out);
+				} while(out != 0);
+				break;
+			case 3: 
+				system("cls");
+				do {
+					printf("____________________BIR ARTIST YA DA FILMIN BAGLANTILARINI GOSTER____________________\n");
+					printf("**UYARI** : Artist adi Firstname Lastname sirasi ile girilecektir! \n");
+					printf("            Ornek input: Kevin Bacon\n");
+					printf("**UYARI** : Film isimlerinin yaninda parantez icerisinde cikis yili yazmalidir! \n");
+					printf("            Ornek input: Fight Club (1999)\n");
+					printf("\nBaglantilari bulunacak artist ya da filmin adini giriniz: ");
+					scanf(" %[^\n]s", artist1);
+					print_connections(hashTable, artist1, M);
+					printf("\nPress 0 to return the menu: ");
+					scanf("%d", &out);
+				} while(out != 0);
+				break;
+			case 4: 
+				system("cls");
+				do {
+					printf("____________________GRAF YAPISINI GORUNTULE____________________\n");
+					print_hash(hashTable, M);
+					printf("\nPress 0 to return the menu: ");
+					scanf("%d", &out);
+				} while(out != 0);
+				break;
 		}
-	} while(fonk != 3);
+	} while(fonk != 5);
 	return 0;
 }
